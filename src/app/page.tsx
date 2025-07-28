@@ -11,7 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { CommentColumn } from '@/components/comment-column';
 import { ProfileColumn } from '@/components/profile-column';
 import { LiveChatColumn, type LiveComment } from '@/components/live-chat-column';
-import { ShoppingCart, HelpCircle, MessagesSquare, Rss, X } from 'lucide-react';
+import { GiftColumn, type Gift } from '@/components/gift-column';
+import { ShoppingCart, HelpCircle, MessagesSquare, Rss, X, GiftIcon } from 'lucide-react';
 import type { UserProfile } from '@/components/profile-column';
 
 type Comment = {
@@ -59,6 +60,7 @@ export default function IxenPage() {
     'Question': [],
     'General': [],
   });
+  const [gifts, setGifts] = useState<Gift[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedCommentId, setSelectedCommentId] = useState<number | string | null>(null);
   const [liveComments, setLiveComments] = useState<LiveComment[]>([]);
@@ -69,6 +71,11 @@ export default function IxenPage() {
   const handleCommentClick = (comment: Comment) => {
     setSelectedUser(getSampleUser(comment.user, comment.profilePictureUrl));
     setSelectedCommentId(comment.id);
+  };
+  
+  const handleGiftClick = (gift: Gift) => {
+    setSelectedUser(getSampleUser(gift.user, gift.profilePictureUrl));
+    setSelectedCommentId(null); // Gifts don't have a selectable state like comments
   };
 
   const addComment = useCallback(async (commentData: any) => {
@@ -115,6 +122,17 @@ export default function IxenPage() {
       });
     }
   }, [toast]);
+  
+  const addGift = useCallback((giftData: any) => {
+      const newGift: Gift = {
+        id: giftData.msgId || `gift-${Date.now()}-${Math.random()}`,
+        user: giftData.uniqueId,
+        giftName: giftData.giftName,
+        count: giftData.repeatCount,
+        profilePictureUrl: giftData.profilePictureUrl,
+      };
+      setGifts(prev => [newGift, ...prev].slice(0, 50));
+  }, []);
 
   const handleDisconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -145,6 +163,7 @@ export default function IxenPage() {
     setConnectionStatus('connecting');
     setLiveComments([]);
     setComments({ 'Purchase Intent': [], 'Question': [], 'General': [] });
+    setGifts([]);
     setSelectedUser(null);
     setSelectedCommentId(null);
     
@@ -163,6 +182,11 @@ export default function IxenPage() {
     eventSource.addEventListener('comment', (event: MessageEvent) => {
         const commentData = JSON.parse(event.data);
         addComment(commentData);
+    });
+
+    eventSource.addEventListener('gift', (event: MessageEvent) => {
+        const giftData = JSON.parse(event.data);
+        addGift(giftData);
     });
 
     eventSource.addEventListener('disconnected', (event: MessageEvent) => {
@@ -265,8 +289,16 @@ export default function IxenPage() {
       </header>
       
       <main className="flex-1 container mx-auto p-4 md:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
           <ProfileColumn user={selectedUser} />
+          <LiveChatColumn
+            liveComments={liveComments}
+            connectionStatus={connectionStatus}
+          />
+          <GiftColumn
+            gifts={gifts}
+            onGiftClick={handleGiftClick}
+          />
           <CommentColumn
             title="Purchase Intent"
             comments={comments['Purchase Intent']}
@@ -287,10 +319,6 @@ export default function IxenPage() {
             icon={<MessagesSquare className="text-muted-foreground" />}
             onCommentClick={handleCommentClick}
             selectedCommentId={selectedCommentId}
-          />
-          <LiveChatColumn
-            liveComments={liveComments}
-            connectionStatus={connectionStatus}
           />
         </div>
       </main>

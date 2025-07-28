@@ -53,6 +53,14 @@ function createSSEStream(username: string) {
       tiktokLiveConnection.on(WebcastEvent.CHAT, (comment) => {
         enqueue('comment', comment);
       });
+      
+      tiktokLiveConnection.on(WebcastEvent.GIFT, (gift) => {
+        // We only want to process the gift when the streak ends
+        if (gift.giftType === 1 && !gift.repeatEnd) {
+          return;
+        }
+        enqueue('gift', gift);
+      });
 
       tiktokLiveConnection.on(ControlEvent.DISCONNECTED, (reason) => {
         console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
