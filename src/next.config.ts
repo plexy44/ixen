@@ -19,6 +19,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+   webpack: (config, { isServer }) => {
+    config.module.rules.push({
+      test: /\.proto$/,
+      use: 'raw-loader',
+    });
+    return config;
+  },
 };
 
 export default nextConfig;
