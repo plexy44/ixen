@@ -1,6 +1,6 @@
 // File: app/api/tiktok/route.ts
 
-import { TikTokLiveConnection } from 'tiktok-live-connector';
+import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,9 +10,11 @@ function createSSEStream(username: string) {
   const stream = new ReadableStream({
     start(controller) {
       const enqueue = (event: string, data: any) => {
-        // This function now only tries to send data.
-        // The controller is closed by the event listeners.
-        controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        try {
+          controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        } catch (e) {
+            console.warn('[SSE] Could not enqueue data, controller is likely closed.', e);
+        }
       };
 
       console.log(`[SSE] Starting stream for @${username}`);
@@ -22,22 +24,23 @@ function createSSEStream(username: string) {
         fetchSubgifts: false,
       });
 
-      tiktokLiveConnector.on('connect', (state) => {
+      tiktokLiveConnector.on(ControlEvent.CONNECTED, (state) => {
         console.log(`[TikTok] Successfully connected to stream for @${username}. Room ID: ${state.roomId}`);
         enqueue('connected', { message: `Connected to @${username}` });
       });
 
-      tiktokLiveConnector.on('comment', (comment) => {
-        enqueue('comment', comment);
+      tiktokLiveConnector.on(WebcastEvent.CHAT, (data) => {
+        // Remap the 'chat' event to a 'comment' event for the client
+        enqueue('comment', data);
       });
 
-      tiktokLiveConnector.on('disconnect', (reason) => {
+      tiktokLiveConnector.on(ControlEvent.DISCONNECTED, (reason) => {
         console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
         enqueue('disconnected', { message: 'Stream disconnected.' });
         controller.close(); // Close the stream on disconnect
       });
 
-      tiktokLiveConnector.on('error', (err: any) => {
+      tiktokLiveConnector.on(ControlEvent.ERROR, (err: any) => {
         console.error(`[TikTok] Error from TikTok connector for @${username}:`, err.message);
         enqueue('error', { message: 'An error occurred with the TikTok connection.', error: err.message });
         controller.close(); // Close the stream on error

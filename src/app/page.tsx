@@ -70,18 +70,26 @@ export default function IxenPage() {
 
   const addComment = useCallback(async (commentData: any) => {
     try {
-      const result = await classifyComment({ comment: commentData.comment });
+      // The event from the new library has the comment text in a different field
+      const commentText = commentData.comment;
+      if (!commentText) return;
+
+      const result = await classifyComment({ comment: commentText });
       const category: CommentCategory = (result.category === 'Purchase Intent' || result.category === 'Question') ? result.category : 'General';
 
       const newComment: Comment = {
-        id: `comment-${Date.now()}-${Math.random()}`,
+        id: commentData.msgId || `comment-${Date.now()}-${Math.random()}`,
         user: commentData.user.uniqueId,
-        text: commentData.comment,
+        text: commentText,
         profilePictureUrl: commentData.user.profilePictureUrl
       };
 
       setComments(prev => {
         const currentCategoryComments = prev[category] || [];
+        // Prevent duplicates
+        if (currentCategoryComments.some(c => c.id === newComment.id)) {
+            return prev;
+        }
         const newCategoryComments = [newComment, ...currentCategoryComments].slice(0, 50);
         return {
           ...prev,
@@ -121,7 +129,6 @@ export default function IxenPage() {
       return;
     }
     
-    // Disconnect if already connected
     if (eventSourceRef.current) {
         handleDisconnect();
     }
@@ -148,30 +155,32 @@ export default function IxenPage() {
         addComment(commentData);
     });
 
-    eventSource.addEventListener('disconnected', () => {
-        setConnectionStatus('error');
+    eventSource.addEventListener('disconnected', (event) => {
+        const data = JSON.parse(event.data);
+        setConnectionStatus('disconnected');
         toast({
             variant: 'destructive',
             title: 'Stream Ended',
-            description: 'The TikTok live stream has ended.',
+            description: data.message || 'The TikTok live stream has ended.',
         });
         handleDisconnect();
     });
 
-    eventSource.onerror = (err) => {
-        console.error("EventSource failed:", err);
+    eventSource.addEventListener('error', (event) => {
+        const data = JSON.parse(event.data);
+        console.error("EventSource failed:", data.error);
         setConnectionStatus('error');
         toast({
             variant: "destructive",
             title: "Connection Failed",
-            description: `Could not connect to @${sanitizedUsername}. The user may not be live or the username is incorrect.`,
+            description: data.error || `Could not connect to @${sanitizedUsername}.`,
         });
         handleDisconnect();
-    };
+    });
+
   };
 
 
-  // Cleanup connection on component unmount
   useEffect(() => {
     return () => {
       if (eventSourceRef.current) {
