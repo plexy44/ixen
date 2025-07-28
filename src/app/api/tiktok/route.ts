@@ -6,14 +6,30 @@ export const dynamic = 'force-dynamic';
 
 function createSSEStream(username: string) {
   let tiktokLiveConnector: TikTokLiveConnection;
+  let isClosed = false;
 
   const stream = new ReadableStream({
     start(controller) {
       const enqueue = (event: string, data: any) => {
+        if (isClosed) return;
         try {
           controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
         } catch (e) {
             console.warn('[SSE] Could not enqueue data, controller is likely closed.', e);
+        }
+      };
+
+      const cleanup = (reason: string) => {
+        if (isClosed) return;
+        isClosed = true;
+        console.log(`[SSE] Closing stream for @${username}. Reason: ${reason}`);
+        if (tiktokLiveConnector) {
+          tiktokLiveConnector.disconnect();
+        }
+        try {
+          controller.close();
+        } catch (e) {
+            // Ignore errors from closing an already closed controller
         }
       };
 
@@ -37,21 +53,22 @@ function createSSEStream(username: string) {
       tiktokLiveConnector.on(ControlEvent.DISCONNECTED, (reason) => {
         console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
         enqueue('disconnected', { message: 'Stream disconnected.' });
-        controller.close(); // Close the stream on disconnect
+        cleanup('Disconnected');
       });
 
       tiktokLiveConnector.on(ControlEvent.ERROR, (err: any) => {
         console.error(`[TikTok] Error from TikTok connector for @${username}:`, err.message);
         enqueue('error', { message: 'An error occurred with the TikTok connection.', error: err.message });
-        controller.close(); // Close the stream on error
+        cleanup('Error');
       });
       
       // Connect without a .catch() block, rely on the 'error' event listener
       tiktokLiveConnector.connect();
     },
     cancel() {
+      if (isClosed) return;
       console.log(`[SSE] Client disconnected from @${username}'s stream.`);
-      // Disconnect the TikTok connection when the client cancels
+       isClosed = true;
       if (tiktokLiveConnector) {
         tiktokLiveConnector.disconnect();
       }
