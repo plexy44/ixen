@@ -1,3 +1,4 @@
+
 // File: app/api/tiktok/route.ts
 
 import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
@@ -69,7 +70,15 @@ function createSSEStream(username: string) {
       });
 
       tiktokLiveConnection.on(ControlEvent.ERROR, (err: any) => {
-        const errorMessage = err instanceof Error ? err.message : String(err);
+        let errorMessage;
+        if (err instanceof Error) {
+            errorMessage = err.message;
+        } else if (typeof err === 'object' && err !== null) {
+            errorMessage = JSON.stringify(err);
+        } else {
+            errorMessage = String(err);
+        }
+        
         console.error(`[TikTok] Error from TikTok connector for @${username}:`, errorMessage);
         enqueue('error', { message: 'An error occurred with the TikTok connection.', error: errorMessage });
         cleanup('Error');
