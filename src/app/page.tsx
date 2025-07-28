@@ -148,12 +148,12 @@ export default function IxenPage() {
         });
     });
 
-    eventSource.addEventListener('comment', (event) => {
+    eventSource.addEventListener('comment', (event: MessageEvent) => {
         const commentData = JSON.parse(event.data);
         addComment(commentData);
     });
 
-    eventSource.addEventListener('disconnected', (event) => {
+    eventSource.addEventListener('disconnected', (event: MessageEvent) => {
         const data = JSON.parse(event.data);
         setConnectionStatus('disconnected');
         toast({
@@ -164,7 +164,7 @@ export default function IxenPage() {
         handleDisconnect();
     });
 
-    eventSource.addEventListener('error', (event) => {
+    eventSource.addEventListener('error', (event: MessageEvent) => {
         let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, or the service is down.`;
         if (event.data) {
             try {
@@ -175,7 +175,7 @@ export default function IxenPage() {
             }
         }
         
-        console.error("EventSource failed:", event);
+        console.error("EventSource failed:", event.data);
         setConnectionStatus('error');
         toast({
             variant: "destructive",
