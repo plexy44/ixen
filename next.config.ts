@@ -1,4 +1,3 @@
-
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -18,17 +17,6 @@ const nextConfig: NextConfig = {
         pathname: '/**',
       },
     ],
-  },
-  webpack: (config, { isServer }) => {
-    // See https://webpack.js.org/configuration/resolve/#resolveextensions
-    config.resolve.extensions.push(".ts", ".tsx");
-    // See https://webpack.js.org/configuration/module/#modulerules
-    config.module.rules.push({
-      test: /\.proto$/,
-      use: "raw-loader",
-    });
-    // Important: return the modified config
-    return config;
   },
 };
 
