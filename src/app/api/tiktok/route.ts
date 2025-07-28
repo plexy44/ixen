@@ -6,55 +6,66 @@ export const dynamic = 'force-dynamic'; // Defaults to auto
 // Helper to create a response with Server-Sent Events
 function createSSEStream(username: string) {
   const stream = new ReadableStream({
-    async start(controller) {
+    start(controller) {
       const enqueue = (event: string, data: any) => {
         try {
             controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
         } catch (e) {
+            // This can happen if the client disconnects abruptly.
             console.warn('[SSE] Could not enqueue data, controller is likely closed.', e);
         }
       };
 
       let tiktokLiveConnector: TikTokLiveConnection;
 
-      try {
-        console.log(`[SSE] Starting stream for @${username}`);
-        tiktokLiveConnector = new TikTokLiveConnection(username, {
-            requestRetryCount: 20,
-            requestRetryDelay: 2000,
-            fetchSubgifts: false,
-        });
+      const connectToTikTok = async () => {
+        try {
+          console.log(`[SSE] Starting stream for @${username}`);
+          
+          tiktokLiveConnector = new TikTokLiveConnection(username, {
+              requestRetryCount: 20,
+              requestRetryDelay: 2000,
+              fetchSubgifts: false,
+              // This option can sometimes help bypass initial connection issues.
+              fetchRoomInfoOnConnect: true, 
+          });
 
-        tiktokLiveConnector.on(ControlEvent.CONNECTED, (state) => {
-          console.log(`[TikTok] Successfully connected to stream for @${username}. Room ID: ${state.roomId}`);
-          enqueue('connected', { message: `Connected to @${username}` });
-        });
+          tiktokLiveConnector.on(ControlEvent.CONNECTED, (state) => {
+            console.log(`[TikTok] Successfully connected to stream for @${username}. Room ID: ${state.roomId}`);
+            enqueue('connected', { message: `Connected to @${username}` });
+          });
+  
+          tiktokLiveConnector.on(WebcastEvent.CHAT, (comment) => {
+            enqueue('comment', comment);
+          });
+  
+          tiktokLiveConnector.on(ControlEvent.DISCONNECTED, (reason) => {
+            console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
+            enqueue('disconnected', { message: 'Stream disconnected.' });
+            controller.close();
+          });
+  
+          tiktokLiveConnector.on(ControlEvent.ERROR, (err: any) => {
+            console.error(`[TikTok] Error from TikTok connector for @${username}:`, err);
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            enqueue('error', { message: 'An error occurred with the TikTok connection.', error: errorMessage });
+            controller.close();
+          });
 
-        tiktokLiveConnector.on(WebcastEvent.CHAT, (comment) => {
-          enqueue('comment', comment);
-        });
+          // Use the promise-based connect method for cleaner initial error handling
+          await tiktokLiveConnector.connect();
 
-        tiktokLiveConnector.on(ControlEvent.DISCONNECTED, (reason) => {
-          console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
-          enqueue('disconnected', { message: 'Stream disconnected.' });
-          controller.close();
-        });
-
-        tiktokLiveConnector.on(ControlEvent.ERROR, (err: any) => {
-          console.error(`[TikTok] Error from TikTok connector for @${username}:`, err);
+        } catch (err: any) {
+          console.error(`[SSE] Server-side error for @${username}:`, err);
           const errorMessage = err instanceof Error ? err.message : String(err);
-          enqueue('error', { message: 'An error occurred with the TikTok connection.', error: errorMessage });
+          // Send a specific error to the client before closing
+          enqueue('error', { message: `Failed to connect to @${username}. The user might not be live or the username is invalid.`, error: errorMessage });
           controller.close();
-        });
-        
-        await tiktokLiveConnector.connect();
+        }
+      };
+      
+      connectToTikTok();
 
-      } catch (err: any) {
-        console.error(`[SSE] Server-side error for @${username}:`, err);
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        enqueue('error', { message: `Failed to connect to @${username}. The user might not be live or the username is invalid.`, error: errorMessage });
-        controller.close();
-      }
     },
     cancel() {
       console.log(`[SSE] Client disconnected.`);
