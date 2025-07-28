@@ -1,5 +1,9 @@
 
-import { TikTokLiveConnector } from 'tiktok-live-connector';
+import { TikTokLiveConnector as TikTokLiveConnectorClass } from 'tiktok-live-connector';
+
+// Compatibility wrapper for CJS/ESM module differences
+const TikTokLiveConnector = (TikTokLiveConnectorClass as any).default || TikTokLiveConnectorClass;
+
 
 export const dynamic = 'force-dynamic'; // Defaults to auto
 
@@ -15,31 +19,33 @@ function createSSEStream(username: string) {
         }
       };
 
+      let tiktokLiveConnector: any;
+
       try {
         console.log(`[SSE] Starting stream for @${username}`);
-        const tiktokLiveConnector = new TikTokLiveConnector(username, {
+        tiktokLiveConnector = new TikTokLiveConnector(username, {
           // These options are recommended for stability
           requestRetryCount: 20,
           requestRetryDelay: 2000,
           fetchSubgifts: false,
         });
 
-        tiktokLiveConnector.on('connect', (state) => {
+        tiktokLiveConnector.on('connect', (state: any) => {
           console.log(`[TikTok] Successfully connected to stream for @${username}. Room ID: ${state.roomId}`);
           enqueue('connected', { message: `Connected to @${username}` });
         });
 
-        tiktokLiveConnector.on('comment', (comment) => {
+        tiktokLiveConnector.on('comment', (comment: any) => {
           enqueue('comment', comment);
         });
 
-        tiktokLiveConnector.on('disconnect', (reason) => {
+        tiktokLiveConnector.on('disconnect', (reason: any) => {
           console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
           enqueue('disconnected', { message: 'Stream disconnected.' });
           controller.close();
         });
 
-        tiktokLiveConnector.on('error', (err) => {
+        tiktokLiveConnector.on('error', (err: any) => {
           console.error(`[TikTok] Error from TikTok connector for @${username}:`, err);
           enqueue('error', { message: 'An error occurred with the TikTok connection.', error: err.toString() });
           controller.close();
@@ -59,7 +65,7 @@ function createSSEStream(username: string) {
       // This is called when the client disconnects.
       // We don't have a direct `disconnect` method on the connector instance,
       // but closing the stream should clean things up.
-      console.log(`[SSE] Client disconnected from @${username}'s stream.`);
+      console.log(`[SSE] Client disconnected.`);
     },
   });
 
