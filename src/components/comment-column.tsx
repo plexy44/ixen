@@ -15,9 +15,11 @@ interface CommentColumnProps {
   title: string;
   comments: Comment[];
   icon: ReactNode;
+  onCommentClick: (comment: Comment) => void;
+  selectedCommentId: number | null;
 }
 
-export function CommentColumn({ title, comments, icon }: CommentColumnProps) {
+export function CommentColumn({ title, comments, icon, onCommentClick, selectedCommentId }: CommentColumnProps) {
   return (
     <Card className="flex flex-col h-[calc(100vh-12rem)] shadow-lg">
       <CardHeader className="flex-shrink-0">
@@ -31,7 +33,14 @@ export function CommentColumn({ title, comments, icon }: CommentColumnProps) {
         <ScrollArea className="h-full">
           <div className="flex flex-col gap-3 p-4 pt-0">
             {comments.length > 0 ? (
-              comments.map((comment) => <CommentCard key={comment.id} comment={comment} />)
+              comments.map((comment) => (
+                <CommentCard
+                  key={comment.id}
+                  comment={comment}
+                  onClick={() => onCommentClick(comment)}
+                  isSelected={comment.id === selectedCommentId}
+                />
+              ))
             ) : (
               <div className="flex items-center justify-center h-full pt-20">
                 <p className="text-muted-foreground text-sm italic">Waiting for comments...</p>

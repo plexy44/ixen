@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { CommentColumn } from '@/components/comment-column';
+import { ProfileColumn } from '@/components/profile-column';
 import { ShoppingCart, HelpCircle, MessagesSquare, Rss, X } from 'lucide-react';
+import type { UserProfile } from '@/components/profile-column';
 
 type Comment = {
   id: number;
@@ -41,6 +43,29 @@ const sampleComments = [
   'hello from Brazil!',
 ];
 
+const sampleUsers: Record<string, UserProfile> = {};
+
+function getSampleUser(username: string): UserProfile {
+    if (sampleUsers[username]) {
+        return sampleUsers[username];
+    }
+    const newUser: UserProfile = {
+        username: username,
+        avatar: `https://placehold.co/128x128.png`,
+        followers: Math.floor(Math.random() * 10000),
+        following: Math.floor(Math.random() * 500),
+        likes: Math.floor(Math.random() * 100000),
+        bio: `Bio for ${username}. Lover of great products!`,
+        purchaseHistory: Array.from({ length: Math.floor(Math.random() * 5) }, (_, i) => ({
+            item: `Product ${i + 1}`,
+            date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        })),
+    };
+    sampleUsers[username] = newUser;
+    return newUser;
+}
+
+
 export default function IxenPage() {
   const [username, setUsername] = useState<string>('');
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
@@ -49,9 +74,16 @@ export default function IxenPage() {
     'Question': [],
     'General': [],
   });
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
 
   const { toast } = useToast();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleCommentClick = (comment: Comment) => {
+    setSelectedUser(getSampleUser(comment.user));
+    setSelectedCommentId(comment.id);
+  };
 
   const addComment = useCallback(async () => {
     const randomCommentText = sampleComments[Math.floor(Math.random() * sampleComments.length)];
@@ -98,6 +130,8 @@ export default function IxenPage() {
     }
     setConnectionStatus('connecting');
     setComments({ 'Purchase Intent': [], 'Question': [], 'General': [] });
+    setSelectedUser(null);
+    setSelectedCommentId(null);
 
     setTimeout(() => {
       setConnectionStatus('connected');
@@ -186,22 +220,29 @@ export default function IxenPage() {
       </header>
       
       <main className="flex-1 container mx-auto p-4 md:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <CommentColumn
             title="Purchase Intent"
             comments={comments['Purchase Intent']}
             icon={<ShoppingCart className="text-accent" />}
+            onCommentClick={handleCommentClick}
+            selectedCommentId={selectedCommentId}
           />
           <CommentColumn
             title="Questions"
             comments={comments['Question']}
             icon={<HelpCircle className="text-primary" />}
+            onCommentClick={handleCommentClick}
+            selectedCommentId={selectedCommentId}
           />
           <CommentColumn
             title="General Chat"
             comments={comments['General']}
             icon={<MessagesSquare className="text-muted-foreground" />}
+            onCommentClick={handleCommentClick}
+            selectedCommentId={selectedCommentId}
           />
+          <ProfileColumn user={selectedUser} />
         </div>
       </main>
     </div>

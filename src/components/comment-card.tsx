@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 type Comment = {
   id: number;
@@ -11,11 +12,19 @@ type Comment = {
 
 interface CommentCardProps {
   comment: Comment;
+  onClick: () => void;
+  isSelected: boolean;
 }
 
-export function CommentCard({ comment }: CommentCardProps) {
+export function CommentCard({ comment, onClick, isSelected }: CommentCardProps) {
   return (
-    <Card className="p-3 bg-card/50 hover:bg-card transition-colors duration-200">
+    <Card
+      onClick={onClick}
+      className={cn(
+        "p-3 bg-card/50 hover:bg-card transition-colors duration-200 cursor-pointer",
+        isSelected && "bg-primary/20 border-primary"
+      )}
+    >
       <div className="flex items-start gap-3">
         <Avatar className="h-8 w-8">
           <AvatarFallback>{comment.user.substring(0, 2).toUpperCase()}</AvatarFallback>
