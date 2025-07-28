@@ -201,11 +201,16 @@ export default function IxenPage() {
     });
 
     eventSource.addEventListener('error', (event: MessageEvent) => {
+        let errorTitle = "Connection Failed";
         let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, the service may be down, or the username is incorrect.`;
+        
         if (event.data) {
             try {
                 const data = JSON.parse(event.data);
-                errorDescription = data.error || data.message || errorDescription;
+                errorDescription = data.error?.message || data.message || errorDescription;
+                if(data.error?.info) {
+                    errorDescription = data.error.info;
+                }
             } catch (e) {
                 console.error("Failed to parse error event data:", e);
             }
@@ -215,7 +220,7 @@ export default function IxenPage() {
         setConnectionStatus('error');
         toast({
             variant: "destructive",
-            title: "Connection Failed",
+            title: errorTitle,
             description: errorDescription,
         });
         handleDisconnect();

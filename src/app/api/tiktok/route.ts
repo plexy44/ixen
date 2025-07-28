@@ -70,17 +70,17 @@ function createSSEStream(username: string) {
       });
 
       tiktokLiveConnection.on(ControlEvent.ERROR, (err: any) => {
-        let errorMessage;
+        let errorPayload;
         if (err instanceof Error) {
-            errorMessage = err.message;
+            errorPayload = { message: err.message, name: err.name, stack: err.stack };
         } else if (typeof err === 'object' && err !== null) {
-            errorMessage = JSON.stringify(err);
+            errorPayload = err;
         } else {
-            errorMessage = String(err);
+            errorPayload = { message: String(err) };
         }
         
-        console.error(`[TikTok] Error from TikTok connector for @${username}:`, errorMessage);
-        enqueue('error', { message: 'An error occurred with the TikTok connection.', error: errorMessage });
+        console.error(`[TikTok] Error from TikTok connector for @${username}:`, errorPayload);
+        enqueue('error', { message: 'An error occurred with the TikTok connection.', error: errorPayload });
         cleanup('Error');
       });
       
