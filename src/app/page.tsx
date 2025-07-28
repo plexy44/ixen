@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { CommentColumn } from '@/components/comment-column';
 import { ProfileColumn } from '@/components/profile-column';
-import { LiveChatModal, type LiveComment } from '@/components/live-chat-modal';
+import { LiveChatColumn, type LiveComment } from '@/components/live-chat-column';
 import { ShoppingCart, HelpCircle, MessagesSquare, Rss, X } from 'lucide-react';
 import type { UserProfile } from '@/components/profile-column';
 
@@ -22,6 +22,7 @@ type Comment = {
 };
 
 export type CommentCategory = 'Purchase Intent' | 'Question' | 'General';
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 type CategorizedComments = {
   [key in CommentCategory]: Comment[];
@@ -52,7 +53,7 @@ function getSampleUser(username: string, profilePictureUrl?: string): UserProfil
 
 export default function IxenPage() {
   const [username, setUsername] = useState<string>('');
-  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [comments, setComments] = useState<CategorizedComments>({
     'Purchase Intent': [],
     'Question': [],
@@ -60,7 +61,6 @@ export default function IxenPage() {
   });
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedCommentId, setSelectedCommentId] = useState<number | string | null>(null);
-  const [isLiveChatModalOpen, setLiveChatModalOpen] = useState(false);
   const [liveComments, setLiveComments] = useState<LiveComment[]>([]);
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -122,7 +122,6 @@ export default function IxenPage() {
       eventSourceRef.current = null;
     }
     setConnectionStatus('disconnected');
-    setLiveChatModalOpen(false);
     toast({
         title: "Disconnected",
         description: "Live stream monitoring has stopped.",
@@ -144,7 +143,6 @@ export default function IxenPage() {
     }
 
     setConnectionStatus('connecting');
-    setLiveChatModalOpen(true);
     setLiveComments([]);
     setComments({ 'Purchase Intent': [], 'Question': [], 'General': [] });
     setSelectedUser(null);
@@ -267,7 +265,7 @@ export default function IxenPage() {
       </header>
       
       <main className="flex-1 container mx-auto p-4 md:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <ProfileColumn user={selectedUser} />
           <CommentColumn
             title="Purchase Intent"
@@ -290,15 +288,12 @@ export default function IxenPage() {
             onCommentClick={handleCommentClick}
             selectedCommentId={selectedCommentId}
           />
+          <LiveChatColumn
+            liveComments={liveComments}
+            connectionStatus={connectionStatus}
+          />
         </div>
       </main>
-      <LiveChatModal 
-        isOpen={isLiveChatModalOpen}
-        onOpenChange={setLiveChatModalOpen}
-        username={username}
-        liveComments={liveComments}
-        connectionStatus={connectionStatus}
-      />
     </div>
   );
 }
