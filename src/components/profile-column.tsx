@@ -31,6 +31,13 @@ const StatCard = ({ icon, label, value }: { icon: React.ReactNode, label: string
     </div>
 );
 
+const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4">
+        <User className="h-12 w-12 text-muted-foreground" />
+        <p className="mt-4 text-lg font-semibold">Select a User</p>
+        <p className="text-sm text-muted-foreground mt-1">Click a comment or gift to display profile information.</p>
+    </div>
+);
 
 export function ProfileColumn({ user }: ProfileColumnProps) {
   return (
@@ -82,11 +89,7 @@ export function ProfileColumn({ user }: ProfileColumnProps) {
 
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground text-center italic">
-              Select a comment to view user profile.
-            </p>
-          </div>
+          <EmptyState />
         )}
       </CardContent>
     </Card>
