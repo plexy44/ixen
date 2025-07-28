@@ -165,13 +165,22 @@ export default function IxenPage() {
     });
 
     eventSource.addEventListener('error', (event) => {
-        const data = JSON.parse(event.data);
-        console.error("EventSource failed:", data.error);
+        let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, or the service is down.`;
+        if (event.data) {
+            try {
+                const data = JSON.parse(event.data);
+                errorDescription = data.error || data.message || errorDescription;
+            } catch (e) {
+                console.error("Failed to parse error event data:", e);
+            }
+        }
+        
+        console.error("EventSource failed:", event);
         setConnectionStatus('error');
         toast({
             variant: "destructive",
             title: "Connection Failed",
-            description: data.error || `Could not connect to @${sanitizedUsername}.`,
+            description: errorDescription,
         });
         handleDisconnect();
     });
