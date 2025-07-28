@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -178,7 +179,7 @@ export default function IxenPage() {
     });
 
     eventSource.addEventListener('error', (event: MessageEvent) => {
-        let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, or the service is down.`;
+        let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, the service may be down, or the username is incorrect.`;
         if (event.data) {
             try {
                 const data = JSON.parse(event.data);
