@@ -74,7 +74,8 @@ function createSSEStream(username: string) {
         if (err instanceof Error) {
             errorPayload = { message: err.message, name: err.name, stack: err.stack };
         } else if (typeof err === 'object' && err !== null) {
-            errorPayload = err;
+            // Ensure we don't just pass an empty object.
+            errorPayload = Object.keys(err).length > 0 ? err : { message: 'An unknown error object was received from the TikTok connector.' };
         } else {
             errorPayload = { message: String(err) };
         }

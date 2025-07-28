@@ -208,9 +208,10 @@ export default function IxenPage() {
         if (event.data) {
             try {
                 parsedData = JSON.parse(event.data);
-                errorDescription = parsedData.error?.info || parsedData.error?.message || parsedData.message || errorDescription;
+                // Extract a more specific error message if available
+                errorDescription = parsedData?.error?.message || parsedData?.error?.info || parsedData.message || errorDescription;
             } catch (e) {
-                console.error("Failed to parse error event data:", e);
+                // Keep the default error description if parsing fails
             }
         }
         
