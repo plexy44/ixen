@@ -6,9 +6,13 @@ export const dynamic = 'force-dynamic'; // Defaults to auto
 // Helper to create a response with Server-Sent Events
 function createSSEStream(username: string) {
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       const enqueue = (event: string, data: any) => {
-        controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        try {
+            controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        } catch (e) {
+            console.warn('[SSE] Could not enqueue data, controller is likely closed.', e);
+        }
       };
 
       try {
@@ -42,17 +46,12 @@ function createSSEStream(username: string) {
         });
         
         // Asynchronously connect and handle initial connection errors
-        tiktokLiveConnector.connect().catch((err) => {
-            console.error(`[TikTok] Failed to connect to @${username}:`, err);
-            // Send a specific error event to the client before closing
-            enqueue('error', { message: `Failed to connect to @${username}. The user might not be live.`, error: err.toString() });
-            controller.close();
-        });
+        await tiktokLiveConnector.connect();
 
       } catch (err: any) {
         console.error(`[SSE] Server-side error for @${username}:`, err);
-        // Ensure the client gets an error event even for synchronous errors
-        enqueue('error', { message: 'A server error occurred during stream setup.', error: err.toString() });
+        // Ensure the client gets an error event even for synchronous errors during setup
+        enqueue('error', { message: `Failed to connect to @${username}. The user might not be live or the username is invalid.`, error: err.toString() });
         controller.close();
       }
     },
