@@ -70,7 +70,6 @@ export default function IxenPage() {
 
   const addComment = useCallback(async (commentData: any) => {
     try {
-      // The event from the new library has the comment text in a different field
       const commentText = commentData.comment;
       if (!commentText) return;
 
@@ -79,14 +78,13 @@ export default function IxenPage() {
 
       const newComment: Comment = {
         id: commentData.msgId || `comment-${Date.now()}-${Math.random()}`,
-        user: commentData.user.uniqueId,
+        user: commentData.uniqueId,
         text: commentText,
-        profilePictureUrl: commentData.user.profilePictureUrl
+        profilePictureUrl: commentData.profilePictureUrl
       };
 
       setComments(prev => {
         const currentCategoryComments = prev[category] || [];
-        // Prevent duplicates
         if (currentCategoryComments.some(c => c.id === newComment.id)) {
             return prev;
         }

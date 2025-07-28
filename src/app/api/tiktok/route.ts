@@ -10,20 +10,19 @@ function createSSEStream(username: string) {
   const stream = new ReadableStream({
     start(controller) {
       const enqueue = (event: string, data: any) => {
-        try {
-            controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-        } catch(e) {
-            // Controller likely closed, ignore
+        // --- FIX: Add a check to ensure data is not undefined ---
+        if (data === undefined) {
+          console.warn(`[SSE] Attempted to send undefined data for event '${event}'. Skipping.`);
+          return;
         }
+        controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
       };
 
       try {
         console.log(`[SSE] Starting stream for @${username}`);
         
-        // Instantiate the library with the correct class name and new options
         tiktokConnection = new WebcastPushConnection(username, {
-          // This option is critical for running in serverless/cloud environments
-          processBeforeConnecting: false, 
+          processBeforeConnecting: false,
         });
 
         tiktokConnection.on('connect', (state) => {
@@ -41,9 +40,7 @@ function createSSEStream(username: string) {
           controller.close();
         });
 
-        // --- IMPROVED ERROR HANDLING ---
         tiktokConnection.on('error', (err: any) => {
-          // This will now catch any thrown object and provide more detail.
           const errorDetails = err.message || JSON.stringify(err);
           console.error(`[TikTok] Connection error for @${username}:`, errorDetails);
           enqueue('error', { message: 'A connection error occurred.', error: errorDetails });
