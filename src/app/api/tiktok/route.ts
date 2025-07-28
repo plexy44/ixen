@@ -19,9 +19,7 @@ function createSSEStream(username: string) {
 
       try {
         console.log(`[SSE] Starting stream for @${username}`);
-        // Use the correct WebcastPushConnection class
         tiktokLiveConnector = new WebcastPushConnection(username, {
-          // These options are recommended for stability
           requestRetryCount: 20,
           requestRetryDelay: 2000,
           fetchSubgifts: false,
@@ -44,24 +42,21 @@ function createSSEStream(username: string) {
 
         tiktokLiveConnector.on('error', (err: any) => {
           console.error(`[TikTok] Error from TikTok connector for @${username}:`, err);
-          enqueue('error', { message: 'An error occurred with the TikTok connection.', error: err.toString() });
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          enqueue('error', { message: 'An error occurred with the TikTok connection.', error: errorMessage });
           controller.close();
         });
         
-        // Asynchronously connect and handle initial connection errors
         await tiktokLiveConnector.connect();
 
       } catch (err: any) {
         console.error(`[SSE] Server-side error for @${username}:`, err);
-        // Ensure the client gets an error event even for synchronous errors during setup
-        enqueue('error', { message: `Failed to connect to @${username}. The user might not be live or the username is invalid.`, error: err.toString() });
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        enqueue('error', { message: `Failed to connect to @${username}. The user might not be live or the username is invalid.`, error: errorMessage });
         controller.close();
       }
     },
     cancel() {
-      // This is called when the client disconnects.
-      // We don't have a direct `disconnect` method on the connector instance,
-      // but closing the stream should clean things up.
       console.log(`[SSE] Client disconnected.`);
     },
   });
@@ -86,7 +81,6 @@ export async function GET(request: Request) {
     });
   }
 
-  // Remove leading '@' if present
   const cleanedUsername = username.startsWith('@') ? username.substring(1) : username;
 
   return createSSEStream(cleanedUsername);
