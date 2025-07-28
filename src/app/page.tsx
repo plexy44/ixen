@@ -221,6 +221,7 @@ export default function IxenPage() {
       
       <main className="flex-1 container mx-auto p-4 md:p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <ProfileColumn user={selectedUser} />
           <CommentColumn
             title="Purchase Intent"
             comments={comments['Purchase Intent']}
@@ -242,7 +243,6 @@ export default function IxenPage() {
             onCommentClick={handleCommentClick}
             selectedCommentId={selectedCommentId}
           />
-          <ProfileColumn user={selectedUser} />
         </div>
       </main>
     </div>
