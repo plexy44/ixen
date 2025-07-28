@@ -1,21 +1,15 @@
-
 // File: app/api/tiktok/route.ts
 
-import { WebcastPushConnection } from 'tiktok-live-connector';
+import { TikTokLiveConnector, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 
 export const dynamic = 'force-dynamic';
 
 function createSSEStream(username: string) {
-  let tiktokConnection: WebcastPushConnection;
+  let tiktokLiveConnector: TikTokLiveConnector;
 
   const stream = new ReadableStream({
-    async start(controller) {
+    start(controller) {
       const enqueue = (event: string, data: any) => {
-        // --- FIX: Add a check to ensure data is not undefined ---
-        if (data === undefined) {
-          console.warn(`[SSE] Attempted to send undefined data for event '${event}'. Skipping.`);
-          return;
-        }
         try {
             controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
         } catch (e) {
@@ -23,59 +17,41 @@ function createSSEStream(username: string) {
         }
       };
 
-      try {
-        console.log(`[SSE] Starting stream for @${username}`);
-        
-        tiktokConnection = new WebcastPushConnection(username, {
-          processBeforeConnecting: false,
-        });
+      console.log(`[SSE] Starting stream for @${username}`);
+      tiktokLiveConnector = new TikTokLiveConnector(username, {
+        requestRetryCount: 20,
+        requestRetryDelay: 2000,
+        fetchSubgifts: false,
+      });
 
-        tiktokConnection.on('connect', (state) => {
-          console.log(`[TikTok] Connected to stream for @${username}. Room ID: ${state.roomId}`);
-          enqueue('connected', { message: `Connected to @${username}` });
-        });
+      tiktokLiveConnector.on(ControlEvent.CONNECTED, (state) => {
+        console.log(`[TikTok] Successfully connected to stream for @${username}. Room ID: ${state.roomId}`);
+        enqueue('connected', { message: `Connected to @${username}` });
+      });
 
-        tiktokConnection.on('comment', (comment) => {
-          enqueue('comment', comment);
-        });
+      tiktokLiveConnector.on(WebcastEvent.CHAT, (comment) => {
+        enqueue('comment', comment);
+      });
 
-        tiktokConnection.on('disconnect', (reason) => {
-          console.log(`[TikTok] Disconnected. Reason: ${reason}`);
-          enqueue('disconnected', { message: 'Stream disconnected.' });
-          controller.close();
-        });
+      tiktokLiveConnector.on(ControlEvent.DISCONNECTED, (reason) => {
+        console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
+        enqueue('disconnected', { message: 'Stream disconnected.' });
+        controller.close(); // Close the stream on disconnect
+      });
 
-        tiktokConnection.on('error', (err: any) => {
-          const errorDetails = err.message || JSON.stringify(err);
-          console.error(`[TikTok] Connection error for @${username}:`, errorDetails);
-          enqueue('error', { message: 'A connection error occurred.', error: errorDetails });
-          controller.close();
-        });
-        
-        // --- NEW TIMEOUT LOGIC ---
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Connection timed out after 15 seconds.')), 15000)
-        );
-
-        console.log('[SSE] Attempting to connect with a 15-second timeout...');
-        
-        // Race the connection against the timeout
-        await Promise.race([
-            tiktokConnection.connect(),
-            timeoutPromise
-        ]);
-
-      } catch (err: any) {
-        const errorDetails = err.message || JSON.stringify(err);
-        console.error(`[SSE] Setup error for @${username}:`, errorDetails);
-        enqueue('error', { message: 'Failed to set up stream.', error: errorDetails });
-        controller.close();
-      }
+      tiktokLiveConnector.on(ControlEvent.ERROR, (err: any) => {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error(`[TikTok] Error from TikTok connector for @${username}:`, errorMessage);
+        enqueue('error', { message: 'An error occurred with the TikTok connection.', error: errorMessage });
+        controller.close(); // Close the stream on error
+      });
+      
+      tiktokLiveConnector.connect();
     },
     cancel() {
-      console.log(`[SSE] Client disconnected from @${username}.`);
-      if (tiktokConnection) {
-        tiktokConnection.disconnect();
+      console.log(`[SSE] Client disconnected from @${username}'s stream.`);
+      if (tiktokLiveConnector) {
+        tiktokLiveConnector.disconnect();
       }
     },
   });
@@ -94,7 +70,10 @@ export async function GET(request: Request) {
   const username = searchParams.get('username');
 
   if (!username) {
-    return new Response(JSON.stringify({ error: 'Username is required' }), { status: 400 });
+    return new Response(JSON.stringify({ error: 'Username is required' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   const cleanedUsername = username.startsWith('@') ? username.substring(1) : username;
