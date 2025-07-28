@@ -1,3 +1,4 @@
+
 // File: app/api/tiktok/route.ts
 
 import { WebcastPushConnection } from 'tiktok-live-connector';
@@ -8,14 +9,18 @@ function createSSEStream(username: string) {
   let tiktokConnection: WebcastPushConnection;
 
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       const enqueue = (event: string, data: any) => {
         // --- FIX: Add a check to ensure data is not undefined ---
         if (data === undefined) {
           console.warn(`[SSE] Attempted to send undefined data for event '${event}'. Skipping.`);
           return;
         }
-        controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        try {
+            controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        } catch (e) {
+            // The controller is likely closed, which is okay in many cases (client disconnected).
+        }
       };
 
       try {
@@ -47,7 +52,18 @@ function createSSEStream(username: string) {
           controller.close();
         });
         
-        tiktokConnection.connect();
+        // --- NEW TIMEOUT LOGIC ---
+        const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Connection timed out after 15 seconds.')), 15000)
+        );
+
+        console.log('[SSE] Attempting to connect with a 15-second timeout...');
+        
+        // Race the connection against the timeout
+        await Promise.race([
+            tiktokConnection.connect(),
+            timeoutPromise
+        ]);
 
       } catch (err: any) {
         const errorDetails = err.message || JSON.stringify(err);
