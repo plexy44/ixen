@@ -1,9 +1,5 @@
 
-import { TikTokLiveConnector as TikTokLiveConnectorClass } from 'tiktok-live-connector';
-
-// Compatibility wrapper for CJS/ESM module differences
-const TikTokLiveConnector = (TikTokLiveConnectorClass as any).default || TikTokLiveConnectorClass;
-
+import { WebcastPushConnection } from 'tiktok-live-connector';
 
 export const dynamic = 'force-dynamic'; // Defaults to auto
 
@@ -23,7 +19,8 @@ function createSSEStream(username: string) {
 
       try {
         console.log(`[SSE] Starting stream for @${username}`);
-        tiktokLiveConnector = new TikTokLiveConnector(username, {
+        // Use the correct WebcastPushConnection class
+        tiktokLiveConnector = new WebcastPushConnection(username, {
           // These options are recommended for stability
           requestRetryCount: 20,
           requestRetryDelay: 2000,
