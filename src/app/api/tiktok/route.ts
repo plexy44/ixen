@@ -10,7 +10,7 @@ function createSSEStream(username: string) {
   let isClosed = false;
 
   const stream = new ReadableStream({
-    start(controller) {
+    async start(controller) {
       const enqueue = (event: string, data: any) => {
         if (!isClosed) {
             try {
@@ -36,6 +36,24 @@ function createSSEStream(username: string) {
       }
 
       console.log(`[SSE] Starting stream for @${username}`);
+      
+      // Use a temporary connection to check if the user is live first
+      const tempConnection = new TikTokLiveConnection(username, { fetchRoomInfoOnConnect: false });
+      
+      try {
+        const isLive = await tempConnection.fetchIsLive();
+        if (!isLive) {
+          enqueue('error', { message: `User @${username} is not live.` });
+          cleanup('User not live');
+          return;
+        }
+      } catch (err: any) {
+        enqueue('error', { message: `Failed to check live status for @${username}. The user might not exist.`, error: err.message || err });
+        cleanup('Failed to check live status');
+        return;
+      }
+      
+      
       tiktokLiveConnection = new TikTokLiveConnection(username, {
         // Recommended options for stability in cloud environments
         processInitialData: false,
@@ -85,7 +103,12 @@ function createSSEStream(username: string) {
         cleanup('Error');
       });
       
-      tiktokLiveConnection.connect();
+      try {
+        await tiktokLiveConnection.connect();
+      } catch (err) {
+        enqueue('error', { message: 'Failed to connect to the stream.', error: err instanceof Error ? err.message : String(err) });
+        cleanup('Connection failed');
+      }
     },
     cancel() {
       if (!isClosed) {
