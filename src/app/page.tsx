@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -59,6 +60,7 @@ export default function IxenPage() {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [selectedCommentId, setSelectedCommentId] = useState<number | string | null>(null);
 
+  const eventSourceRef = useRef<EventSource | null>(null);
   const { toast } = useToast();
 
   const handleCommentClick = (comment: Comment) => {
@@ -97,6 +99,18 @@ export default function IxenPage() {
     }
   }, [toast]);
 
+  const handleDisconnect = useCallback(() => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    setConnectionStatus('disconnected');
+    toast({
+        title: "Disconnected",
+        description: "Live stream monitoring has stopped.",
+      });
+  }, [toast]);
+
   const handleConnect = () => {
     if (!username.trim()) {
       toast({
@@ -106,42 +120,65 @@ export default function IxenPage() {
       });
       return;
     }
+    
+    // Disconnect if already connected
+    if (eventSourceRef.current) {
+        handleDisconnect();
+    }
+
     setConnectionStatus('connecting');
     setComments({ 'Purchase Intent': [], 'Question': [], 'General': [] });
     setSelectedUser(null);
     setSelectedCommentId(null);
     
-    // NOTE: Real connection logic will be added here
-    setTimeout(() => {
-        if(Math.random() > 0.1) { // Simulate successful connection
-            setConnectionStatus('connected');
-            toast({
-                title: "Connected!",
-                description: `Now monitoring comments for @${username}.`,
-            });
-        } else { // Simulate failed connection
-            setConnectionStatus('error');
-            toast({
-                variant: "destructive",
-                title: "Connection Failed",
-                description: `Could not connect to @${username}. Please check the username and try again.`,
-            });
-        }
-    }, 2000);
+    const sanitizedUsername = username.startsWith('@') ? username.substring(1) : username;
+    const eventSource = new EventSource(`/api/tiktok?username=${sanitizedUsername}`);
+    eventSourceRef.current = eventSource;
+
+    eventSource.addEventListener('connected', () => {
+        setConnectionStatus('connected');
+        toast({
+            title: "Connected!",
+            description: `Now monitoring comments for @${sanitizedUsername}.`,
+        });
+    });
+
+    eventSource.addEventListener('comment', (event) => {
+        const commentData = JSON.parse(event.data);
+        addComment(commentData);
+    });
+
+    eventSource.addEventListener('disconnected', () => {
+        setConnectionStatus('error');
+        toast({
+            variant: 'destructive',
+            title: 'Stream Ended',
+            description: 'The TikTok live stream has ended.',
+        });
+        handleDisconnect();
+    });
+
+    eventSource.onerror = (err) => {
+        console.error("EventSource failed:", err);
+        setConnectionStatus('error');
+        toast({
+            variant: "destructive",
+            title: "Connection Failed",
+            description: `Could not connect to @${sanitizedUsername}. The user may not be live or the username is incorrect.`,
+        });
+        handleDisconnect();
+    };
   };
 
-  const handleDisconnect = () => {
-    setConnectionStatus('disconnected');
-    toast({
-        title: "Disconnected",
-        description: "Live stream monitoring has stopped.",
-      });
-  };
 
-  // This useEffect will be used to manage the WebSocket connection
+  // Cleanup connection on component unmount
   useEffect(() => {
-    // WebSocket/SSE connection will be set up here
-  }, [connectionStatus, username, addComment]);
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
 
   const getStatusBadge = () => {
     switch (connectionStatus) {
@@ -176,6 +213,7 @@ export default function IxenPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 disabled={isConnected || isConnecting}
                 className="pl-3"
+                onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
               />
             </div>
             {isConnected ? (
