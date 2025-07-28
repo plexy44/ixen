@@ -203,20 +203,18 @@ export default function IxenPage() {
     eventSource.addEventListener('error', (event: MessageEvent) => {
         let errorTitle = "Connection Failed";
         let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, the service may be down, or the username is incorrect.`;
-        
+        let parsedData: any = null;
+
         if (event.data) {
             try {
-                const data = JSON.parse(event.data);
-                errorDescription = data.error?.message || data.message || errorDescription;
-                if(data.error?.info) {
-                    errorDescription = data.error.info;
-                }
+                parsedData = JSON.parse(event.data);
+                errorDescription = parsedData.error?.info || parsedData.error?.message || parsedData.message || errorDescription;
             } catch (e) {
                 console.error("Failed to parse error event data:", e);
             }
         }
         
-        console.error("EventSource failed:", event.data);
+        console.error("EventSource failed:", parsedData || event.data);
         setConnectionStatus('error');
         toast({
             variant: "destructive",
@@ -329,4 +327,5 @@ export default function IxenPage() {
       </main>
     </div>
   );
-}
+
+    
