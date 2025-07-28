@@ -2,25 +2,26 @@
 import { TikTokLiveConnector } from 'tiktok-live-connector';
 
 export const dynamic = 'force-dynamic'; // Defaults to auto
+
 // Helper to create a response with Server-Sent Events
 function createSSEStream(username: string) {
   const stream = new ReadableStream({
     start(controller) {
+      const enqueue = (event: string, data: any) => {
+        controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      };
+
       try {
-        console.log(`Attempting to connect to @${username}'s stream...`);
+        console.log(`[SSE] Starting stream for @${username}`);
         const tiktokLiveConnector = new TikTokLiveConnector(username, {
           // These options are recommended for stability
           requestRetryCount: 20,
           requestRetryDelay: 2000,
-          fetchSubgifts: false, // Set to true if you want to receive gift data
+          fetchSubgifts: false,
         });
 
-        const enqueue = (event: string, data: any) => {
-          controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-        };
-
         tiktokLiveConnector.on('connect', (state) => {
-          console.log(`Successfully connected to stream for @${username}. Room ID: ${state.roomId}`);
+          console.log(`[TikTok] Successfully connected to stream for @${username}. Room ID: ${state.roomId}`);
           enqueue('connected', { message: `Connected to @${username}` });
         });
 
@@ -29,26 +30,29 @@ function createSSEStream(username: string) {
         });
 
         tiktokLiveConnector.on('disconnect', (reason) => {
-          console.log(`Disconnected from @${username}'s stream. Reason: ${reason}`);
+          console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
           enqueue('disconnected', { message: 'Stream disconnected.' });
           controller.close();
         });
 
         tiktokLiveConnector.on('error', (err) => {
-          console.error(`Error from TikTok connector for @${username}:`, err);
-          enqueue('error', { message: 'An error occurred.', error: err.toString() });
+          console.error(`[TikTok] Error from TikTok connector for @${username}:`, err);
+          enqueue('error', { message: 'An error occurred with the TikTok connection.', error: err.toString() });
           controller.close();
         });
         
+        // Asynchronously connect and handle initial connection errors
         tiktokLiveConnector.connect().catch((err) => {
-            console.error(`Failed to connect to @${username}:`, err);
-            enqueue('error', { message: `Failed to connect to @${username}. Is the user live?`, error: err.toString() });
+            console.error(`[TikTok] Failed to connect to @${username}:`, err);
+            // Send a specific error event to the client before closing
+            enqueue('error', { message: `Failed to connect to @${username}. The user might not be live.`, error: err.toString() });
             controller.close();
         });
 
       } catch (err: any) {
-        console.error(`Server-side error for @${username}:`, err);
-        controller.enqueue(`event: error\ndata: ${JSON.stringify({ message: 'A server error occurred.', error: err.toString() })}\n\n`);
+        console.error(`[SSE] Server-side error for @${username}:`, err);
+        // Ensure the client gets an error event even for synchronous errors
+        enqueue('error', { message: 'A server error occurred during stream setup.', error: err.toString() });
         controller.close();
       }
     },
@@ -56,7 +60,7 @@ function createSSEStream(username: string) {
       // This is called when the client disconnects.
       // We don't have a direct `disconnect` method on the connector instance,
       // but closing the stream should clean things up.
-      console.log(`Client disconnected from @${username}'s stream.`);
+      console.log(`[SSE] Client disconnected from @${username}'s stream.`);
     },
   });
 
