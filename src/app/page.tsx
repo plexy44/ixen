@@ -13,9 +13,10 @@ import { ShoppingCart, HelpCircle, MessagesSquare, Rss, X } from 'lucide-react';
 import type { UserProfile } from '@/components/profile-column';
 
 type Comment = {
-  id: number;
+  id: string | number;
   user: string;
   text: string;
+  profilePictureUrl?: string;
 };
 
 export type CommentCategory = 'Purchase Intent' | 'Question' | 'General';
@@ -24,34 +25,15 @@ type CategorizedComments = {
   [key in CommentCategory]: Comment[];
 };
 
-const sampleComments = [
-  'How much is this?',
-  'I want to buy one!',
-  'this is so cool',
-  'what other colors do you have?',
-  'lol',
-  'can I get a discount?',
-  'where do you ship to?',
-  'great stream!',
-  'take my money',
-  'just ordered one',
-  'is this available in Canada?',
-  'this looks awesome',
-  'can you show the back?',
-  'I love this product',
-  'how do I order?',
-  'hello from Brazil!',
-];
-
 const sampleUsers: Record<string, UserProfile> = {};
 
-function getSampleUser(username: string): UserProfile {
+function getSampleUser(username: string, profilePictureUrl?: string): UserProfile {
     if (sampleUsers[username]) {
         return sampleUsers[username];
     }
     const newUser: UserProfile = {
         username: username,
-        avatar: `https://placehold.co/128x128.png`,
+        avatar: profilePictureUrl || `https://placehold.co/128x128.png`,
         followers: Math.floor(Math.random() * 10000),
         following: Math.floor(Math.random() * 500),
         likes: Math.floor(Math.random() * 100000),
@@ -75,28 +57,25 @@ export default function IxenPage() {
     'General': [],
   });
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
-  const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
+  const [selectedCommentId, setSelectedCommentId] = useState<number | string | null>(null);
 
   const { toast } = useToast();
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleCommentClick = (comment: Comment) => {
-    setSelectedUser(getSampleUser(comment.user));
+    setSelectedUser(getSampleUser(comment.user, comment.profilePictureUrl));
     setSelectedCommentId(comment.id);
   };
 
-  const addComment = useCallback(async () => {
-    const randomCommentText = sampleComments[Math.floor(Math.random() * sampleComments.length)];
-    const randomUser = `user${Math.floor(Math.random() * 900) + 100}`;
-
+  const addComment = useCallback(async (commentData: { uniqueId: string, comment: string, profilePictureUrl: string }) => {
     try {
-      const result = await classifyComment({ comment: randomCommentText });
+      const result = await classifyComment({ comment: commentData.comment });
       const category: CommentCategory = (result.category === 'Purchase Intent' || result.category === 'Question') ? result.category : 'General';
 
       const newComment: Comment = {
-        id: Date.now() + Math.random(),
-        user: randomUser,
-        text: randomCommentText,
+        id: `comment-${Date.now()}-${Math.random()}`,
+        user: commentData.uniqueId,
+        text: commentData.comment,
+        profilePictureUrl: commentData.profilePictureUrl
       };
 
       setComments(prev => {
@@ -110,7 +89,6 @@ export default function IxenPage() {
 
     } catch (error) {
       console.error("Error classifying comment:", error);
-      setConnectionStatus('error');
       toast({
         variant: "destructive",
         title: "AI Error",
@@ -132,14 +110,24 @@ export default function IxenPage() {
     setComments({ 'Purchase Intent': [], 'Question': [], 'General': [] });
     setSelectedUser(null);
     setSelectedCommentId(null);
-
+    
+    // NOTE: Real connection logic will be added here
     setTimeout(() => {
-      setConnectionStatus('connected');
-      toast({
-        title: "Connected!",
-        description: `Now monitoring comments for @${username}.`,
-      });
-    }, 1500);
+        if(Math.random() > 0.1) { // Simulate successful connection
+            setConnectionStatus('connected');
+            toast({
+                title: "Connected!",
+                description: `Now monitoring comments for @${username}.`,
+            });
+        } else { // Simulate failed connection
+            setConnectionStatus('error');
+            toast({
+                variant: "destructive",
+                title: "Connection Failed",
+                description: `Could not connect to @${username}. Please check the username and try again.`,
+            });
+        }
+    }, 2000);
   };
 
   const handleDisconnect = () => {
@@ -150,19 +138,10 @@ export default function IxenPage() {
       });
   };
 
+  // This useEffect will be used to manage the WebSocket connection
   useEffect(() => {
-    if (connectionStatus === 'connected') {
-      intervalRef.current = setInterval(addComment, 2500);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [connectionStatus, addComment]);
+    // WebSocket/SSE connection will be set up here
+  }, [connectionStatus, username, addComment]);
 
   const getStatusBadge = () => {
     switch (connectionStatus) {

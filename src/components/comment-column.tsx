@@ -6,9 +6,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CommentCard } from "@/components/comment-card";
 
 type Comment = {
-  id: number;
+  id: number | string;
   user: string;
   text: string;
+  profilePictureUrl?: string;
 };
 
 interface CommentColumnProps {
@@ -16,7 +17,7 @@ interface CommentColumnProps {
   comments: Comment[];
   icon: ReactNode;
   onCommentClick: (comment: Comment) => void;
-  selectedCommentId: number | null;
+  selectedCommentId: number | string | null;
 }
 
 export function CommentColumn({ title, comments, icon, onCommentClick, selectedCommentId }: CommentColumnProps) {
