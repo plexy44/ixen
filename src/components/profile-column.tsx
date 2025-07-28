@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -41,7 +42,7 @@ const EmptyState = () => (
 
 export function ProfileColumn({ user }: ProfileColumnProps) {
   return (
-    <Card className="flex flex-col h-[calc(100vh-12rem)] shadow-lg">
+    <Card className="flex flex-col h-[80vh] md:h-[calc(100vh-12rem)] shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <User className="text-primary" />

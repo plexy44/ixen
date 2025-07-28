@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -55,7 +56,7 @@ interface GiftColumnProps {
 
 export function GiftColumn({ gifts, onGiftClick }: GiftColumnProps) {
   return (
-    <Card className="flex flex-col h-[calc(100vh-12rem)] shadow-lg">
+    <Card className="flex flex-col h-[80vh] md:h-[calc(100vh-12rem)] shadow-lg">
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           <GiftIcon className="text-pink-500" />

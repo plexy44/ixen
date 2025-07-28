@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
@@ -31,7 +32,7 @@ const EmptyState = () => (
 
 export function CommentColumn({ title, comments, icon, onCommentClick, selectedCommentId }: CommentColumnProps) {
   return (
-    <Card className="flex flex-col h-[calc(100vh-12rem)] shadow-lg">
+    <Card className="flex flex-col h-[80vh] md:h-[calc(100vh-12rem)] shadow-lg">
       <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center gap-2 text-lg">
           {icon}

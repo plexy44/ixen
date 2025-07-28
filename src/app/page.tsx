@@ -209,7 +209,7 @@ export default function IxenPage() {
             try {
                 parsedData = JSON.parse(event.data);
                 // Extract a more specific error message if available
-                errorDescription = parsedData?.error?.message || parsedData?.error?.info || parsedData.message || errorDescription;
+                errorDescription = parsedData?.error?.message || parsedData.message || errorDescription;
             } catch (e) {
                 // Keep the default error description if parsing fails
             }
@@ -292,41 +292,40 @@ export default function IxenPage() {
         </div>
       </header>
       
-      <main className="flex-1 container mx-auto p-4 md:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+      <main className="flex-1 container mx-auto p-4 md:p-6 grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+        <div className="2xl:col-span-2 xl:col-span-4 lg:col-span-3 sm:col-span-2 col-span-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-6">
           <ProfileColumn user={selectedUser} />
           <LiveChatColumn
             liveComments={liveComments}
             connectionStatus={connectionStatus}
           />
-          <GiftColumn
-            gifts={gifts}
-            onGiftClick={handleGiftClick}
-          />
-          <CommentColumn
-            title="Purchase Intent"
-            comments={comments['Purchase Intent']}
-            icon={<ShoppingCart className="text-accent" />}
-            onCommentClick={handleCommentClick}
-            selectedCommentId={selectedCommentId}
-          />
-          <CommentColumn
-            title="Questions"
-            comments={comments['Question']}
-            icon={<HelpCircle className="text-primary" />}
-            onCommentClick={handleCommentClick}
-            selectedCommentId={selectedCommentId}
-          />
-          <CommentColumn
-            title="General Chat"
-            comments={comments['General']}
-            icon={<MessagesSquare className="text-muted-foreground" />}
-            onCommentClick={handleCommentClick}
-            selectedCommentId={selectedCommentId}
-          />
         </div>
+        <GiftColumn
+          gifts={gifts}
+          onGiftClick={handleGiftClick}
+        />
+        <CommentColumn
+          title="Purchase Intent"
+          comments={comments['Purchase Intent']}
+          icon={<ShoppingCart className="text-accent" />}
+          onCommentClick={handleCommentClick}
+          selectedCommentId={selectedCommentId}
+        />
+        <CommentColumn
+          title="Questions"
+          comments={comments['Question']}
+          icon={<HelpCircle className="text-primary" />}
+          onCommentClick={handleCommentClick}
+          selectedCommentId={selectedCommentId}
+        />
+        <CommentColumn
+          title="General Chat"
+          comments={comments['General']}
+          icon={<MessagesSquare className="text-muted-foreground" />}
+          onCommentClick={handleCommentClick}
+          selectedCommentId={selectedCommentId}
+        />
       </main>
     </div>
   );
-
-    
+}

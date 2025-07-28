@@ -53,7 +53,7 @@ const EmptyState = ({ status }: { status: ConnectionStatus }) => {
 
 export function LiveChatColumn({ liveComments, connectionStatus }: LiveChatColumnProps) {
   return (
-    <Card className="flex flex-col h-[calc(100vh-12rem)] shadow-lg">
+    <Card className="flex flex-col h-[80vh] md:h-[calc(100vh-12rem)] shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <MessageCircle className="text-primary" />
@@ -89,4 +89,3 @@ export function LiveChatColumn({ liveComments, connectionStatus }: LiveChatColum
     </Card>
   );
 }
-
