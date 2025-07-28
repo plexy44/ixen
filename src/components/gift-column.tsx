@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { GiftIcon } from "lucide-react";
+import { GiftIcon, PackageOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type Gift = {
@@ -40,6 +40,14 @@ function GiftCard({ gift, onClick }: GiftCardProps) {
   );
 }
 
+const EmptyState = () => (
+    <div className="flex flex-col items-center justify-center h-full text-center p-4 pt-20">
+        <PackageOpen className="h-12 w-12 text-muted-foreground" />
+        <p className="mt-4 text-lg font-semibold">No Gifts Yet</p>
+        <p className="text-sm text-muted-foreground mt-1">Gifts from viewers will appear here.</p>
+    </div>
+);
+
 interface GiftColumnProps {
   gifts: Gift[];
   onGiftClick: (gift: Gift) => void;
@@ -57,21 +65,19 @@ export function GiftColumn({ gifts, onGiftClick }: GiftColumnProps) {
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden p-0">
         <ScrollArea className="h-full">
-          <div className="flex flex-col gap-3 p-4 pt-0">
             {gifts.length > 0 ? (
-              gifts.map((gift) => (
-                <GiftCard
-                  key={gift.id}
-                  gift={gift}
-                  onClick={() => onGiftClick(gift)}
-                />
-              ))
+                <div className="flex flex-col gap-3 p-4 pt-0">
+                    {gifts.map((gift) => (
+                        <GiftCard
+                        key={gift.id}
+                        gift={gift}
+                        onClick={() => onGiftClick(gift)}
+                        />
+                    ))}
+                </div>
             ) : (
-              <div className="flex items-center justify-center h-full pt-20">
-                <p className="text-muted-foreground text-sm italic">Waiting for gifts...</p>
-              </div>
+                <EmptyState />
             )}
-          </div>
         </ScrollArea>
       </CardContent>
     </Card>
