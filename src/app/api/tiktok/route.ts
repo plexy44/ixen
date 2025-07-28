@@ -1,4 +1,3 @@
-
 // File: app/api/tiktok/route.ts
 
 import { TikTokLiveConnector, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
@@ -28,14 +27,22 @@ function createSSEStream(username: string) {
           if (tiktokLiveConnector) {
             tiktokLiveConnector.disconnect();
           }
-          controller.close();
+          try {
+            controller.close();
+          } catch(e) {
+            // Controller may already be closed, which is fine.
+          }
       }
 
       console.log(`[SSE] Starting stream for @${username}`);
       tiktokLiveConnector = new TikTokLiveConnector(username, {
+        // Recommended options for stability in cloud environments
+        processInitialData: false,
+        fetchRoomInfoOnConnect: true,
         requestRetryCount: 20,
         requestRetryDelay: 2000,
-        fetchSubgifts: false,
+        connectWithUniqueId: true,
+        disableEulerFallbacks: true,
       });
 
       tiktokLiveConnector.on(ControlEvent.CONNECTED, (state) => {
@@ -65,10 +72,7 @@ function createSSEStream(username: string) {
     cancel() {
       if (!isClosed) {
         console.log(`[SSE] Client disconnected from @${username}'s stream.`);
-        isClosed = true;
-        if (tiktokLiveConnector) {
-          tiktokLiveConnector.disconnect();
-        }
+        cleanup('Client disconnected');
       }
     },
   });
