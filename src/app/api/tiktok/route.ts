@@ -1,5 +1,5 @@
 
-import { WebcastPushConnection } from 'tiktok-live-connector';
+import { TikTokLiveConnection, WebcastEvent, ControlEvent } from 'tiktok-live-connector';
 
 export const dynamic = 'force-dynamic'; // Defaults to auto
 
@@ -15,32 +15,32 @@ function createSSEStream(username: string) {
         }
       };
 
-      let tiktokLiveConnector: any;
+      let tiktokLiveConnector: TikTokLiveConnection;
 
       try {
         console.log(`[SSE] Starting stream for @${username}`);
-        tiktokLiveConnector = new WebcastPushConnection(username, {
-          requestRetryCount: 20,
-          requestRetryDelay: 2000,
-          fetchSubgifts: false,
+        tiktokLiveConnector = new TikTokLiveConnection(username, {
+            requestRetryCount: 20,
+            requestRetryDelay: 2000,
+            fetchSubgifts: false,
         });
 
-        tiktokLiveConnector.on('connect', (state: any) => {
+        tiktokLiveConnector.on(ControlEvent.CONNECTED, (state) => {
           console.log(`[TikTok] Successfully connected to stream for @${username}. Room ID: ${state.roomId}`);
           enqueue('connected', { message: `Connected to @${username}` });
         });
 
-        tiktokLiveConnector.on('comment', (comment: any) => {
+        tiktokLiveConnector.on(WebcastEvent.CHAT, (comment) => {
           enqueue('comment', comment);
         });
 
-        tiktokLiveConnector.on('disconnect', (reason: any) => {
+        tiktokLiveConnector.on(ControlEvent.DISCONNECTED, (reason) => {
           console.log(`[TikTok] Disconnected from @${username}'s stream. Reason: ${reason}`);
           enqueue('disconnected', { message: 'Stream disconnected.' });
           controller.close();
         });
 
-        tiktokLiveConnector.on('error', (err: any) => {
+        tiktokLiveConnector.on(ControlEvent.ERROR, (err: any) => {
           console.error(`[TikTok] Error from TikTok connector for @${username}:`, err);
           const errorMessage = err instanceof Error ? err.message : String(err);
           enqueue('error', { message: 'An error occurred with the TikTok connection.', error: errorMessage });

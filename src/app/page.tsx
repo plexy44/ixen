@@ -68,16 +68,16 @@ export default function IxenPage() {
     setSelectedCommentId(comment.id);
   };
 
-  const addComment = useCallback(async (commentData: { uniqueId: string, comment: string, profilePictureUrl: string }) => {
+  const addComment = useCallback(async (commentData: any) => {
     try {
       const result = await classifyComment({ comment: commentData.comment });
       const category: CommentCategory = (result.category === 'Purchase Intent' || result.category === 'Question') ? result.category : 'General';
 
       const newComment: Comment = {
         id: `comment-${Date.now()}-${Math.random()}`,
-        user: commentData.uniqueId,
+        user: commentData.user.uniqueId,
         text: commentData.comment,
-        profilePictureUrl: commentData.profilePictureUrl
+        profilePictureUrl: commentData.user.profilePictureUrl
       };
 
       setComments(prev => {
