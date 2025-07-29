@@ -1,6 +1,4 @@
 
-'use server';
-
 import puppeteer, { Browser, Page } from 'puppeteer';
 
 export const dynamic = 'force-dynamic';
