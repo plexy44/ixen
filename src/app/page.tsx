@@ -171,6 +171,11 @@ export default function IxenPage() {
     const eventSource = new EventSource(`/api/tiktok?username=${sanitizedUsername}`);
     eventSourceRef.current = eventSource;
 
+    eventSource.onopen = () => {
+        // This confirms the browser has opened the connection, but doesn't mean we're "connected" to TikTok yet.
+        console.log("[SSE] Connection to backend API opened.");
+    };
+
     eventSource.addEventListener('connected', () => {
         setConnectionStatus('connected');
         toast({
@@ -200,22 +205,16 @@ export default function IxenPage() {
         handleDisconnect();
     });
 
-    eventSource.addEventListener('error', (event: MessageEvent) => {
+    eventSource.onerror = (event: any) => {
         let errorTitle = "Connection Failed";
-        let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, the service may be down, or the username is incorrect.`;
-        let parsedData: any = null;
-
-        if (event.data) {
-            try {
-                parsedData = JSON.parse(event.data);
-                // Extract a more specific error message if available
-                errorDescription = parsedData?.error?.message || parsedData.message || errorDescription;
-            } catch (e) {
-                // Keep the default error description if parsing fails
-            }
-        }
+        let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not exist, not be live, or an API error occurred.`;
         
-        console.error("EventSource failed:", parsedData || event.data);
+        // The 'error' event for EventSource doesn't carry a detailed body from the server in a standard way.
+        // The actual error response from the failed HTTP request to the API route isn't directly available here.
+        // The most reliable way to get a specific error is to see the browser's network tab for the failed request to `/api/tiktok`.
+        
+        console.error("EventSource failed. See network tab for details.", event);
+        
         setConnectionStatus('error');
         toast({
             variant: "destructive",
@@ -223,7 +222,7 @@ export default function IxenPage() {
             description: errorDescription,
         });
         handleDisconnect();
-    });
+    };
 
   };
 
