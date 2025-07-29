@@ -171,6 +171,10 @@ export default function IxenPage() {
     const eventSource = new EventSource(`/api/tiktok?username=${sanitizedUsername}`);
     eventSourceRef.current = eventSource;
 
+    eventSource.onopen = () => {
+      console.log("EventSource connected.");
+    };
+
     eventSource.addEventListener('connected', () => {
         setConnectionStatus('connected');
         toast({
@@ -189,42 +193,36 @@ export default function IxenPage() {
         addGift(giftData);
     });
 
-    eventSource.addEventListener('disconnected', (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
-        setConnectionStatus('disconnected');
-        toast({
-            variant: 'destructive',
-            title: 'Stream Ended',
-            description: data.message || 'The TikTok live stream has ended.',
-        });
-        handleDisconnect();
-    });
+    eventSource.onerror = (event: Event) => {
+      console.error("EventSource failed:", event);
+      // The Event object itself doesn't contain the detailed error message.
+      // We check if it's a MessageEvent and has data.
+      let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, the service may be down, or the username is incorrect. Check browser console for details.`;
+      
+      if (event instanceof MessageEvent && event.data) {
+          try {
+              const parsedData = JSON.parse(event.data);
+              if(parsedData.message) {
+                  errorDescription = parsedData.message;
+              }
+          } catch (e) {
+             // Data is not JSON, use the default message
+          }
+      }
 
-    eventSource.addEventListener('error', (event: MessageEvent) => {
-        let errorTitle = "Connection Failed";
-        let errorDescription = `Could not connect to @${sanitizedUsername}. The user may not be live, the service may be down, or the username is incorrect.`;
-        let parsedData: any = null;
+      setConnectionStatus('error');
+      toast({
+          variant: "destructive",
+          title: "Connection Failed",
+          description: errorDescription,
+      });
 
-        if (event.data) {
-            try {
-                parsedData = JSON.parse(event.data);
-                // Extract a more specific error message if available
-                errorDescription = parsedData?.error?.message || parsedData?.error?.info || parsedData.message || errorDescription;
-            } catch (e) {
-                // Keep the default error description if parsing fails
-            }
-        }
-        
-        console.error("EventSource failed:", parsedData || event.data);
-        setConnectionStatus('error');
-        toast({
-            variant: "destructive",
-            title: errorTitle,
-            description: errorDescription,
-        });
-        handleDisconnect();
-    });
-
+      // Close the connection
+      if (eventSourceRef.current) {
+          eventSourceRef.current.close();
+          eventSourceRef.current = null;
+      }
+    };
   };
 
 
@@ -292,41 +290,49 @@ export default function IxenPage() {
         </div>
       </header>
       
-      <main className="flex-1 container mx-auto p-4 md:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-          <ProfileColumn user={selectedUser} />
-          <LiveChatColumn
-            liveComments={liveComments}
-            connectionStatus={connectionStatus}
-          />
-          <GiftColumn
-            gifts={gifts}
-            onGiftClick={handleGiftClick}
-          />
-          <CommentColumn
-            title="Purchase Intent"
-            comments={comments['Purchase Intent']}
-            icon={<ShoppingCart className="text-accent" />}
-            onCommentClick={handleCommentClick}
-            selectedCommentId={selectedCommentId}
-          />
-          <CommentColumn
-            title="Questions"
-            comments={comments['Question']}
-            icon={<HelpCircle className="text-primary" />}
-            onCommentClick={handleCommentClick}
-            selectedCommentId={selectedCommentId}
-          />
-          <CommentColumn
-            title="General Chat"
-            comments={comments['General']}
-            icon={<MessagesSquare className="text-muted-foreground" />}
-            onCommentClick={handleCommentClick}
-            selectedCommentId={selectedCommentId}
-          />
-        </div>
-      </main>
+      <main className="flex-1 container mx-auto p-4 md:p-6 grid gap-6 grid-cols-1 lg:grid-cols-3 xl:grid-cols-6">
+          {/* Profile Column - Spans 2/6 on XL, 1/3 on LG */}
+          <div className="xl:col-span-2 lg:col-span-1">
+            <ProfileColumn user={selectedUser} />
+          </div>
+
+          {/* Live Feeds - Spans 2/6 on XL, 1/3 on LG */}
+          <div className="xl:col-span-2 lg:col-span-1 grid grid-rows-2 gap-6">
+            <LiveChatColumn
+              liveComments={liveComments}
+              connectionStatus={connectionStatus}
+            />
+            <GiftColumn
+              gifts={gifts}
+              onGiftClick={handleGiftClick}
+            />
+          </div>
+
+          {/* Comment Categories - Spans 2/6 on XL, 1/3 on LG */}
+          <div className="xl:col-span-2 lg:col-span-1 grid grid-rows-3 gap-6">
+            <CommentColumn
+                title="Purchase Intent"
+                comments={comments['Purchase Intent']}
+                icon={<ShoppingCart className="text-accent" />}
+                onCommentClick={handleCommentClick}
+                selectedCommentId={selectedCommentId}
+            />
+            <CommentColumn
+                title="Questions"
+                comments={comments['Question']}
+                icon={<HelpCircle className="text-primary" />}
+                onCommentClick={handleCommentClick}
+                selectedCommentId={selectedCommentId}
+            />
+            <CommentColumn
+                title="General Chat"
+                comments={comments['General']}
+                icon={<MessagesSquare className="text-muted-foreground" />}
+                onCommentClick={handleCommentClick}
+                selectedCommentId={selectedCommentId}
+            />
+          </div>
+        </main>
     </div>
   );
-
-    
+}

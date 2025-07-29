@@ -77,22 +77,22 @@ async function createPuppeteerStream(username: string) {
                 });
 
                 if (!isLive) {
-                    throw new Error('User is not live or the stream is not available.');
+                    throw new Error('User is not live or the stream has ended.');
                 }
 
                 enqueue('connected', { message: `Connected to @${username}` });
                 console.log(`[Puppeteer] Successfully connected to @${username}'s live stream.`);
 
-                await page.exposeFunction('onNewComment', (comment: any) => {
-                    enqueue('comment', comment);
+                await page.exposeFunction('onNewData', (data: { type: string; payload: any }) => {
+                   enqueue(data.type, data.payload);
                 });
 
                 await page.evaluate(() => {
                     const chatContainer = document.querySelector('[class*="DivChatRoom"]');
                     if (!chatContainer) {
-                         (window as any).onNewComment({
-                             uniqueId: 'System',
-                             comment: 'Could not find chat container. The page structure might have changed.',
+                         (window as any).onNewData({
+                             type: 'error',
+                             payload: { message: 'Could not find chat container. The page structure might have changed.' }
                          });
                         return;
                     }
@@ -102,15 +102,37 @@ async function createPuppeteerStream(username: string) {
                             for (const node of mutation.addedNodes) {
                                 if (node.nodeType === Node.ELEMENT_NODE) {
                                     const element = node as HTMLElement;
+                                    
+                                    // Check for comments
                                     const commentSpan = element.querySelector('[class*="CommentText"]');
                                     const userSpan = element.querySelector('[class*="NickName"]');
-
                                     if (commentSpan && userSpan) {
-                                        (window as any).onNewComment({
-                                            uniqueId: userSpan.textContent?.trim() || 'Unknown User',
-                                            comment: commentSpan.textContent?.trim(),
-                                            profilePictureUrl: element.querySelector('img')?.src
+                                        (window as any).onNewData({
+                                            type: 'comment',
+                                            payload: {
+                                                uniqueId: userSpan.textContent?.trim() || 'Unknown User',
+                                                comment: commentSpan.textContent?.trim(),
+                                                profilePictureUrl: element.querySelector('img')?.src
+                                            }
                                         });
+                                    }
+
+                                    // Check for gifts
+                                    const giftUserSpan = element.querySelector('[class*="GiftNickName"]');
+                                    const giftDescSpan = element.querySelector('[class*="GiftInfo"]');
+                                    if(giftUserSpan && giftDescSpan) {
+                                        const giftMatch = giftDescSpan.textContent?.match(/Sent (.+) x(\d+)/);
+                                        if (giftMatch) {
+                                            (window as any).onNewData({
+                                                type: 'gift',
+                                                payload: {
+                                                    uniqueId: giftUserSpan.textContent?.trim() || 'Unknown User',
+                                                    giftName: giftMatch[1].trim(),
+                                                    repeatCount: parseInt(giftMatch[2], 10),
+                                                    profilePictureUrl: element.querySelector('img')?.src
+                                                }
+                                            });
+                                        }
                                     }
                                 }
                             }
